@@ -61,6 +61,9 @@ void UpdateTouchStatus(HWND hwnd, WPARAM wParam, LPARAM lParam)
 			int	w = TOUCH_COORD_TO_PIXEL(ti.cxContact);
 			int h = TOUCH_COORD_TO_PIXEL(ti.cyContact);
 
+			//
+			// point5 : ƒCƒxƒ“ƒg‚ÌŽí—Þ‚ÍdwFlags‚ÉŠi”[‚³‚ê‚Ä‚¢‚é
+			//
 			if (ti.dwFlags & TOUCHEVENTF_UP) {
 				// noting to do...
 			}
