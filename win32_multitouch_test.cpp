@@ -2,7 +2,13 @@
 // win32_multitouch_test.cpp - Win32でマルチタッチの検出テスト
 //
 // 参考 :
+//    Windows タッチ メッセージ - はじめに
 //    https://msdn.microsoft.com/ja-jp/library/windows/desktop/dd371581(v=vs.85).aspx
+//
+//    複数の接触点の検出と追跡
+//    https://msdn.microsoft.com/ja-jp/library/windows/desktop/dd744775(v=vs.85).aspx
+//
+//    TOUCHINPUT 構造体
 //    https://msdn.microsoft.com/ja-jp/library/windows/desktop/dd317334(v=vs.85).aspx
 //
 #include <SDKDDKVer.h>
@@ -11,7 +17,7 @@
 #include "resource.h"
 
 #include <vector>
-
+ 
 HWND hwnd = NULL;
 BOOL enableMultiTouch = FALSE;
 
@@ -26,7 +32,7 @@ public:
 
 std::vector<TouchInput> touch_inputs;
 
-void UpdateTouchStatus(WPARAM wParam, LPARAM lParam)
+void UpdateTouchStatus(HWND hwnd, WPARAM wParam, LPARAM lParam)
 {
 	touch_inputs.clear();
 
@@ -43,7 +49,24 @@ void UpdateTouchStatus(WPARAM wParam, LPARAM lParam)
 
 		for (UINT i = 0; i < touchNum; i++){
 			TOUCHINPUT ti = pTouchInput[i];
-			touch_inputs.push_back(TouchInput(ti.x, ti.y, ti.cxContact, ti.cyContact));
+
+			// 
+			// point4: デジタイザの座標からスクリーン座標に変換すること。
+			//
+			POINT pt;
+			pt.x = TOUCH_COORD_TO_PIXEL(ti.x); // 単位の変換。TOUCHINPUTで用いられている単位はピクセル座標の1/100の値
+			pt.y = TOUCH_COORD_TO_PIXEL(ti.y);
+			ScreenToClient(hwnd, &pt);  // デスクトップ座標->ウインドウローカル座標
+
+			int	w = TOUCH_COORD_TO_PIXEL(ti.cxContact);
+			int h = TOUCH_COORD_TO_PIXEL(ti.cyContact);
+
+			if (ti.dwFlags & TOUCHEVENTF_UP) {
+				// noting to do...
+			}
+			else {
+				touch_inputs.push_back(TouchInput(pt.x, pt.y, w, h));
+			}
 		}
 
 		delete[] pTouchInput;
@@ -72,10 +95,10 @@ void MyDraw(HDC hdc)
 
 	std::vector<TouchInput>::const_iterator it;
 	for (it = touch_inputs.begin(); it != touch_inputs.end(); ++it) {
-		int l = it->x - it->w * 10;
-		int t = it->y - it->h * 10;
-		int r = it->x + it->w * 10;
-		int b = it->y + it->h * 10;
+		int l = it->x - it->w;
+		int t = it->y - it->h;
+		int r = it->x + it->w;
+		int b = it->y + it->h;
 		Ellipse(hdc, l, t, r, b);
 	}
 
@@ -115,10 +138,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		//
 		// point2 : タッチ操作を行った場合、ウインドウメッセージWM_TOUCHが送られてくる。
 		//
-		UpdateTouchStatus(wParam, lParam);
-		InvalidateRect(hwnd, NULL, TRUE);
-		break;
-	case WM_MOUSEMOVE:
+		UpdateTouchStatus(hwnd, wParam, lParam);
 		InvalidateRect(hwnd, NULL, TRUE);
 		break;
 	default:
