@@ -17,17 +17,20 @@
 #include "resource.h"
 
 #include <vector>
- 
+#include <string>
+#include <sstream>
+
 HWND hwnd = NULL;
 BOOL enableMultiTouch = FALSE;
 
 class TouchInput {
 public:
+	unsigned int id;
 	int x, y, w, h;
 
-	TouchInput() : x(0), y(0), w(x), h(h) {}
-	TouchInput(const int &x, const int &y, const int &w, const int &h) : x(x), y(y), w(w), h(h) {};
-	TouchInput(const TouchInput &t) : x(t.x), y(t.y), w(t.w), h(t.h) {};
+	TouchInput() : id(0), x(0), y(0), w(x), h(h) {}
+	TouchInput(const unsigned int &id, const int &x, const int &y, const int &w, const int &h) : id(id), x(x), y(y), w(w), h(h) {};
+	TouchInput(const TouchInput &t) : id(t.id), x(t.x), y(t.y), w(t.w), h(t.h) {};
 };
 
 std::vector<TouchInput> touch_inputs;
@@ -62,13 +65,16 @@ void UpdateTouchStatus(HWND hwnd, WPARAM wParam, LPARAM lParam)
 			int h = TOUCH_COORD_TO_PIXEL(ti.cyContact);
 
 			//
-			// point5 : イベントの種類はdwFlagsに格納されている
+			// point5 : DOWN, MOVE, TOUCHなど、イベントの種類はdwFlagsに格納されている
 			//
 			if (ti.dwFlags & TOUCHEVENTF_UP) {
 				// noting to do...
 			}
 			else {
-				touch_inputs.push_back(TouchInput(pt.x, pt.y, w, h));
+				//
+				//　point6 : dwIDに追跡を行うために必要なIDが割り振られる。
+				//
+				touch_inputs.push_back(TouchInput(ti.dwID, pt.x, pt.y, w, h));
 			}
 		}
 
@@ -103,6 +109,10 @@ void MyDraw(HDC hdc)
 		int r = it->x + it->w;
 		int b = it->y + it->h;
 		Ellipse(hdc, l, t, r, b);
+
+		std::stringstream ss;
+		ss << "id=" << it->id;
+		TextOut(hdc, l, t, ss.str().c_str() , ss.str().size());
 	}
 
 	// delete pen & brush
