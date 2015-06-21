@@ -20,8 +20,14 @@
 #include <string>
 #include <sstream>
 
+#define WINDOW_W  1024
+#define WINDOW_H  768
+
 HWND hwnd = NULL;
+HBITMAP hbitmap   = NULL; // for preventing flickering
+HDC     hbitmapdc = NULL;
 BOOL enableMultiTouch = FALSE;
+
 
 class TouchInput {
 public:
@@ -86,12 +92,30 @@ void UpdateTouchStatus(HWND hwnd, WPARAM wParam, LPARAM lParam)
 
 void MyDraw(HDC hdc)
 {
+	// prepare a bitmap for offscreen rendering
+	if (hbitmap == NULL) {
+		hbitmap = CreateCompatibleBitmap(hdc, WINDOW_W, WINDOW_H);
+		hbitmapdc = CreateCompatibleDC(hdc);
+		SelectObject(hbitmapdc, hbitmap);
+	}
+
+	// clear background
+	RECT rect;
+	rect.left = 0;
+	rect.right = WINDOW_W - 1;
+	rect.top = 0;
+	rect.bottom = WINDOW_H - 1;
+	HBRUSH while_brush = CreateSolidBrush(RGB(50, 151, 151));
+	FillRect(hbitmapdc, &rect, (HBRUSH)GetStockObject(WHITE_BRUSH));
+
+	// 
 	HPEN pen, oldpen;
 	HBRUSH brush, oldbrush;
 
 	if (enableMultiTouch == FALSE) {
 		char *msg = "This environment does not support multi-touch...";
-		TextOut(hdc, 20, 20, msg, strlen(msg));
+		TextOut(hbitmapdc, 20, 20, msg, strlen(msg));
+		BitBlt(hdc, 0, 0, WINDOW_W, WINDOW_H, hbitmapdc, 0, 0, SRCCOPY);
 		return;
 	}
 
@@ -99,8 +123,8 @@ void MyDraw(HDC hdc)
 	pen = CreatePen(PS_SOLID, 1, RGB(255, 0, 255));
 	brush = CreateSolidBrush(RGB(255, 0, 255));
 
-	oldpen = (HPEN)SelectObject(hdc, pen);
-	oldbrush = (HBRUSH)SelectObject(hdc, brush);
+	oldpen = (HPEN)SelectObject(hbitmapdc, pen);
+	oldbrush = (HBRUSH)SelectObject(hbitmapdc, brush);
 
 	std::vector<TouchInput>::const_iterator it;
 	for (it = touch_inputs.begin(); it != touch_inputs.end(); ++it) {
@@ -116,10 +140,13 @@ void MyDraw(HDC hdc)
 	}
 
 	// delete pen & brush
-	SelectObject(hdc, oldpen);
-	SelectObject(hdc, oldbrush);
+	SelectObject(hbitmapdc, oldpen);
+	SelectObject(hbitmapdc, oldbrush);
 	DeleteObject(pen);
 	DeleteObject(brush);
+
+	// draw the offscreen rendering image to the window...
+	BitBlt(hdc, 0, 0, WINDOW_W, WINDOW_H, hbitmapdc, 0, 0, SRCCOPY);
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -135,9 +162,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		MyDraw(hdc);
 		EndPaint(hwnd, &ps);
 		break;
+	case WM_ERASEBKGND:
+		// 
+		return TRUE;
 	case WM_CLOSE:
 		DestroyWindow(hwnd);
 		hwnd = NULL;
+		DeleteDC(hbitmapdc);
+		hbitmapdc = NULL;
+		DeleteObject(hbitmap);
+		hbitmap = NULL;
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -177,7 +211,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	RegisterClassEx(&wc);
 
 	hwnd = CreateWindow(wc.lpszClassName, "win32_multitouch_test", WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, NULL, NULL, NULL, NULL);
+		CW_USEDEFAULT, CW_USEDEFAULT, WINDOW_W, WINDOW_H, NULL, NULL, NULL, NULL);
 
 	// 
 	// point1 : マルチタッチ検出を行う場合は、RegisterTouchWindow()関数を使ってWM_TOUCHを受けるように設定
