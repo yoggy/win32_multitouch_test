@@ -132,11 +132,11 @@ void MyDraw(HDC hdc)
 		int t = it->y - it->h;
 		int r = it->x + it->w;
 		int b = it->y + it->h;
-		Ellipse(hdc, l, t, r, b);
+		Ellipse(hbitmapdc, l, t, r, b);
 
 		std::stringstream ss;
 		ss << "id=" << it->id;
-		TextOut(hdc, l, t, ss.str().c_str() , ss.str().size());
+		TextOut(hbitmapdc, l, t, ss.str().c_str(), ss.str().size());
 	}
 
 	// delete pen & brush
