@@ -210,8 +210,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 	wc.lpszClassName = "dummyclassname";
 	RegisterClassEx(&wc);
 
+	int desktop_w = GetSystemMetrics(SM_CXFULLSCREEN);
+	int desktop_h = GetSystemMetrics(SM_CYFULLSCREEN);
+
 	hwnd = CreateWindow(wc.lpszClassName, "win32_multitouch_test", WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT, WINDOW_W, WINDOW_H, NULL, NULL, NULL, NULL);
+		(desktop_w - WINDOW_W) / 2, (desktop_h - WINDOW_H) / 2, WINDOW_W, WINDOW_H, NULL, NULL, NULL, NULL);
 
 	// 
 	// point1 : マルチタッチ検出を行う場合は、RegisterTouchWindow()関数を使ってWM_TOUCHを受けるように設定
